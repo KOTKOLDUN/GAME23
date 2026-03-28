@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ocean Overlord: Legendary Depths</title>
+    <style>
+        /* ==============================================================
+           CSS STYLES – Ocean Overlord: Legendary Depths
+           ============================================================== */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #001f3f, #000b20);
+            image-rendering: pixelated;
+        }
+        /* UI Elements */
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .ui-panel {
+            position: absolute;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #00ffff;
+            border-radius: 8px;
+            padding: 10px;
+            pointer-events: all;
+            box-sizing: border-box;
+        }
+        #start-menu, #pause-menu, #settings-menu, #gameover-menu {
+            width: 300px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #hud {
+            top: 10px;
+            left: 10px;
+            width: 200px;
+        }
+        #xp-bar-bg, #health-bar-bg {
+            width: 100%;
+            height: 12px;
+            background: #222;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        #xp-bar-fill, #health-bar-fill {
+            height: 100%;
+            background: linear-gradient(to right, #00ff88, #00cc66);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        #coins-display, #ability-icons {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .ability-icon {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            margin: 4px;
+            background: #555;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 32px;
+            font-size: 18px;
+            color: #fff;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .ability-icon.ready {
+            opacity: 1;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+        }
+        .ability-icon.cooldown {
+            opacity: 0.3;
+            background: #777;
+        }
+        button {
+            background: #005577;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            margin: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #0077aa;
+        }
+        /* Settings */
+        #settings-menu input[type=range] {
+            width: 100%;
+        }
+        /* Particles container */
+        #particles-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        /* Debug */
+        #debug {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-container">
+        <!-- Start Menu -->
+        <div id="start-menu" class="ui-panel">
+            <h1>Ocean Overlord: Legendary Depths</h1>
+            <p>Dive into the abyss, evolve, and become the Leviathan.</p>
+            <button id="startBtn">Start Game</button>
+            <button id="settingsBtn">Settings</button>
+        </div>
+        <!-- Pause Menu -->
+        <div id="pause-menu" class="ui-panel" style="display:none;">
+            <h1>Paused</h1>
+            <button id="resumeBtn">Resume</button>
+            <button id="restartBtn">Restart</button>
+            <button id="settingsBtn2">Settings</button>
+            <button id="quitToMainBtn">Quit to Main</button>
+        </div>
+        <!-- Settings Menu -->
+        <div id="settings-menu" class="ui-panel" style="display:none;">
+            <h1>Settings</h1>
+            <label>Volume: <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5"></label><br>
+            <label>Quality:
+                <select id="qualitySelect">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </label><br>
+            <button id="applySettingsBtn">Apply</button>
+            <button id="backBtn">Back</button>
+        </div>
+        <!-- HUD -->
+        <div id="hud" class="ui-panel">
+            <div>Coins: <span id="coins-display">0</span></div>
+            <div>XP: <span id="xp-display">0</span> / <span id="xp-needed">0</span></div>
+            <div id="xp-bar-bg"><div id="xp-bar-fill"></div></div>
+            <div>Health: <span id="health-display">0</span> / <span id="health-max">0</span></div>
+            <div id="health-bar-bg"><div id="health-bar-fill"></div></div>
+            <div id="ability-icons"></div>
+            <div id="evolution-display">Stage: <span id="evolution-stage">Tiny Fish</span></div>
+        </div>
+        <!-- Game Over Menu -->
+        <div id="gameover-menu" class="ui-panel" style="display:none;">
+            <h1>Game Over</h1>
+            <p>You reached stage: <span id="final-stage"></span></p>
+            <p>Coins earned: <span id="final-coins"></span></p>
+            <button id="restartGoBtn">Restart</button>
+            <button id="mainMenuGoBtn">Main Menu</button>
+        </div>
+        <!-- Particles container -->
+        <div id="particles-container"></div>
+        <!-- Debug -->
+        <div id="debug"></div>
+    </div>
+
+    <script>
+        /* ==============================================================
+           OCEAN OVERLORD: LEGENDARY DEPTHS – GAME ENGINE
+           ============================================================== */
+        // Configuration
+        const CONFIG = {
+            FPS: 60,
+            WORLD_WIDTH: 8000,
+            WORLD_HEIGHT: 6000,
+            VIEWPORT_PADDING: 400,
+            MAX_FISH: 300,
+            MAX_PARTICLES: 500,
+            SPAWN_INTERVAL: 1500,
+            BASE_XP_PER_FISH: 10,
+            COIN_PER_FISH: 2,
+            EVOLUTION_STAGES: [
+                {name: "Tiny Fish", size: 12, speed: 1.8, dmg: 1, vision: 120, color: "#ff9966"},
+                {name: "Small Fish", size: 18, speed: 1.6, dmg: 2, vision: 150, color: "#ffcc66"},
+                {name: "Hunter Fish", size: 24, speed: 1.5, dmg: 3, vision: 180, color: "#ff9900"},
+                {name: "Barracuda", size: 32, speed: 1.4, dmg: 5, vision: 220, color: "#ff6600"},
+                {name: "Shark", size: 40, speed: 1.3, dmg: 8, vision: 260, color: "#ff3300"},
+                {name: "Mega Shark", size: 50, speed: 1.2, dmg: 12, vision: 300, color: "#cc0000"},
+                {name: "Ancient Leviathan", size: 70, speed: 1.0, dmg: 20, vision: 380, color: "#9900ff"}
+            ],
+            ABILITIES: [
+                {id: "dash", name: "Dash", icon: "⚡", cooldown: 5, description: "Burst of speed"},
+                {id: "bite", name: "Bite", icon: "🦷", cooldown: 3, description: "Increased damage"},
+                {id: "shockwave", name: "Shockwave", icon: "💥", cooldown: 8, description: "Radial damage pulse"},
+                {id: "frenzy", name: "Blood Frenzy", icon: "🔥", cooldown: 10, description: "Temporary damage & speed boost"},
+                {id: "roar", name: "Leviathan Roar", icon: "🐋", cooldown: 15, description: "Stun nearby enemies"}
+            ],
+            BIOMES: [
+                {name: "Shallow Reef", yMin: 0, yMax: 1500, colorTop: "#00bfff", colorBottom: "#004080", density: 0.8},
+                {name: "Coral Gardens", yMin: 1200, yMax: 2500, colorTop: "#ff69b4", colorBottom: "#8b008b", density: 0.9},
+                {name: "Open Blue Ocean", yMin: 2000, yMax: 4000, colorTop: "#00ffff", colorBottom: "#000080", density: 0.6},
+                {name: "Deep Sea", yMin: 3500, yMax: 5000, colorTop: "#000033", colorBottom: "#000000", density: 0.4},
+                {name: "Abyss Zone", yMin: 4500, yMax: 6000, colorTop: "#000000", colorBottom: "#000000", density: 0.2},
+                {name: "Sunken Ship Graveyard", yMin: 1000, yMax: 3000, colorTop: "#555555", colorBottom: "#222222", density: 0.3},
+                {name: "Bioluminescent Jellyfish Forest", yMin: 2000, yMax: 4500, colorTop: "#00ff00", colorBottom: "#006600", density: 0.7}
+            ]
+        };
+
+        // ==== UTILITIES ====
+        function rand(min, max) { return Math.random() * (max - min) + min; }
+        function randInt(min, max) { return Math.floor(rand(min, max)); }
+        function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+        function dist(x1, y1, x2, y2) { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx*dx + dy*dy); }
+        function rectContains(rect, px, py) {
+            return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+        }
+        function circleOverlap(x1, y1, r1, x2, y2, r2) {
+            return dist(x1, y1, x2, y2) < (r1 + r2);
+        }
+        function lerp(a, b, t) { return a + (b - a) * t; }
+
+        // ==== INPUT SYSTEM ====
+        const Input = {
+            keys: {},
+            mouse: { x: 0, y: 0, pressed: false },
+            init(canvas) {
+                window.addEventListener('keydown', e => this.keys[e.code] = true);
+                window.addEventListener('keyup', e => this.keys[e.code] = false);
+                canvas.addEventListener('mousemove', e => {
+                    const rect = canvas.getBoundingClientRect();
+                    this.x = e.clientX - rect.left;
+                    this.y = e.clientY - rect.top;
+                });
+                canvas.addEventListener('mousedown', e => { this.pressed = true; });
+                canvas.addEventListener('mouseup', e => { this.pressed = false; });
+                window.addEventListener('contextmenu', e => e.preventDefault());
+            },
+            isDown(code) { return !!this.keys[code]; },
+            isMouseDown() { return this.pressed; },
+            getMousePos() { return { x: this.x, y: this.y }; }
+        };
+
+        // ==== PARTICLE SYSTEM ====
+        class Particle {
+            constructor(x, y, vx, vy, life, color, size) {
+                this.x = x; this.y = y;
+                this.vx = vx; this.vy = vy;
+                this.life = life; this.maxLife = life;
+                this.color = color; this.size = size;
+            }
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.life -= dt;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                return this.life > 0;
+            }
+            draw(ctx) {
+                const alpha = this.life / this.maxLife;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        class ParticleSystem {
+            constructor(maxParticles) {
+                this.particles = [];
+                this.max = maxParticles;
+                this.pool = [];
+            }
+            spawn(x, y, count = 5) {
+                for (let i = 0; i < count && this.particles.length < this.max; i++) {
+                    const angle = rand(0, Math.PI * 2);
+                    const speed = rand(20, 80);
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    const life = rand(0.3, 0.8);
+                    const size = rand(2, 5);
+                    let color;
+                    if (Math.random() > 0.5) color = 'rgba(255,255,255,0.8)'; // bubble
+                    else color = 'rgba(255,69,0,0.7)'; // blood
+                    this.particles.push(new Particle(x, y, vx, vy, life, color, size));
+                }
+            }
+            update(dt) {
+                this.particles = this.particles.filter(p => p.update(dt));
+            }
+            draw(ctx) {
+                this.particles.forEach(p => p.draw(ctx));
+            }
+        }
+
+        // ==== ENTITY BASE ====
+        class Entity {
+            constructor(x, y, size, speed, color) {
+                this.x = x; this.y = y;
+                this.size = size;
+                this.speed = speed;
+                this.vx = 0; this.vy = 0;
+                this.color = color;
+                this.alive = true;
+                this.type = 'entity';
+            }
+            update(dt) {
+                // apply velocity
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                // simple drag
+                this.vx *= 0.95;
+                this.vy *= 0.95;
+                // world wrap (optional)
+                if (this.x < -this.size) this.x = CONFIG.WORLD_WIDTH + this.size;
+                if (this.x > CONFIG.WORLD_WIDTH + this.size) this.x = -this.size;
+                if (this.y < -this.size) this.y = CONFIG.WORLD_HEIGHT + this.size;
+                if (this.y > CONFIG.WORLD_HEIGHT + this.size) this.y = -this.size;
+            }
+            draw(ctx, camX, camY) {
+                const screenX = this.x - camX;
+                const screenY = this.y - camY;
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                // simple fish shape (triangle body + tail)
+                ctx.moveTo(0, -this.size/2);
+                ctx.lineTo(this.size/2, this.size/2);
+                ctx.lineTo(-this.size/2, this.size/2);
+                ctx.closePath();
+                ctx.fill();
+                // eye
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-this.size/4, -this.size/4, this.size/6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+            getBounds() {
+                return { x: this.x - this.size/2, y: this.y - this.size/2, w: this.size, h: this.size };
+            }
+            distanceTo(entity) {
+                return dist(this.x, this.y, entity.x, entity.y);
+            }
+        }
+
+        // ==== FISH (PLAYER & AI) ====
+        class Fish extends Entity {
+            constructor(x, y, stageIdx, isPlayer = false) {
+                const stage = CONFIG.EVOLUTION_STAGES[stageIdx];
+                super(x, y, stage.size, stage.speed, stage.color);
+                this.stageIdx = stageIdx;
+                this.isPlayer = isPlayer;
+                this.vision = stage.vision;
+                this.baseDamage = stage.dmg;
+                this.damage = this.baseDamage;
+                this.maxHealth = stage.size * 2;
+                this.health = this.maxHealth;
+                this.xp = 0;
+                this.xpToNext = this.calculateXpNeeded();
+                this.coins = 0;
+                this.abilities = {};
+                CONFIG.ABILITIES.forEach(a => {
+                    this.abilities[a.id] = { ready: true, cooldown: 0, maxCooldown: a.cooldown };
+                });
+                this.effects = { frenzyTimer: 0, roarStun: 0 };
+                this.schoolTimer = 0;
+                this.target = null;
+                this.state = isPlayer ? 'player' : 'wander';
+            }
+            calculateXpNeeded() {
+                return Math.floor(50 * Math.pow(1.5, this.stageIdx));
+            }
+            gainXp(amount) {
+                this.xp += amount;
+                if (this.xp >= this.xpToNext && this.stageIdx < CONFIG.EVOLUTION_STAGES.length - 1) {
+                    this.evolve();
+                }
+            }
+            evolve() {
+                this.stageIdx++;
+                const newStage = CONFIG.EVOLUTION_STAGES[this.stageIdx];
+                this.size = newStage.size;
+                this.speed = newStage.speed;
+                this.color = newStage.color;
+                this.vision = newStage.vision;
+                this.baseDamage = newStage.dmg;
+                this.damage = this.baseDamage;
+                this.maxHealth = this.size * 2;
+                this.health = this.maxHealth;
+                this.xp = 0;
+                this.xpToNext = this.calculateXpNeeded();
+                // unlock new ability if available
+                const newAbIdx = this.stageIdx;
+                if (newAbIdx < CONFIG.ABILITIES.length) {
+                    const abil = CONFIG.ABILITIES[newAbIdx];
+                    this.abilities[abil.id].ready = true;
+                }
+                // visual evolution effect
+                particleSys.spawn(this.x, this.y, 20);
+            }
+            updateAbilities(dt) {
+                for (const id in this.abilities) {
+                    const abil = this.abilities[id];
+                    if (!abil.ready) {
+                        abil.cooldown -= dt;
+                        if (abil.cooldown <= 0) {
+                            abil.ready = true;
+                            abil.cooldown = 0;
+                        }
+                    }
+                }
+                // frenzy
+                if (this.effects.frenzyTimer > 0) {
+                    this.effects.frenzyTimer -= dt;
+                    if (this.effects.frenzyTimer <= 0) {
+                        this.damage = this.baseDamage;
+                        this.speed = CONFIG.EVOLUTION_STAGES[this.stageIdx].speed;
+                    }
+                }
+                // roar stun on enemies handled elsewhere
+            }
+            useAbility(id) {
+                const abil = this.abilities[id];
+                if (!abil.ready) return false;
+                abil.ready = false;
+                abil.cooldown = abil.maxCooldown;
+                switch (id) {
+                    case 'dash':
+                        const angle = Math.atan2(Input.mouse.y - (this.y - camY), Input.mouse.x - (this.x - camX));
+                        this.vx += Math.cos(angle) * 300;
+                        this.vy += Math.sin(angle) * 300;
+                        particleSys.spawn(this.x, this.y, 15);
+                        break;
+                    case 'bite':
+                        this.damage = this.baseDamage * 2;
+                        setTimeout(() => { this.damage = this.baseDamage; }, 3000);
+                        break;
+                    case 'shockwave':
+                        // radial damage handled in combat system
+                        particleSys.spawn(this.x, this.y, 25);
+                        break;
+                    case 'frenzy':
+                        this.effects.frenzyTimer = 6; // 6 seconds
+                        this.damage = this.baseDamage * 1.5;
+                        this.speed = CONFIG.EVOLUTION_STAGES[this.stageIdx].speed * 1.3;
+                        break;
+                    case 'roar':
+                        this.effects.roarStun = 4; // stun duration
+                        particleSys.spawn(this.x, this.y, 20);
+                        break;
+                }
+                return true;
+            }
+            updateAI(dt, fishList) {
+                if (this.isPlayer) return;
+                // State machine
+                switch (this.state) {
+                    case 'wander':
+                        this.wander(dt);
+                        if (this.target && this.target.isPlayer && this.distanceTo(this.target) < this.vision) {
+                            this.state = 'hunt';
+                        }
+                        break;
+                    case 'hunt':
+                        if (!this.target || !this.target.alive || this.distanceTo(this.target) > this.vision * 1.5) {
+                            this.state = 'wander';
+                            this.target = null;
+                        } else {
+                            this.pursue(this.target, dt);
+                            if (this.distanceTo(this.target) < this.size/2 + this.target.size/2) {
+                                this.attack(this.target);
+                            }
+                        }
+                        break;
+                    case 'flee':
+                        if (this.target && this.distanceTo(this.target) > this.vision * 2) {
+                            this.state = 'wander';
+                            this.target = null;
+                        } else {
+                            this.flee(this.target, dt);
+                        }
+                        break;
+                }
+                // school behavior (simple)
+                this.schoolTimer -= dt;
+                if (this.schoolTimer <= 0) {
+                    this.schoolTimer = rand(2, 5);
+                    const nearby = fishList.filter(f => f !== this && f.alive && this.distanceTo(f) < 100);
+                    if (nearby.length > 0) {
+                        const avg = { x: 0, y: 0 };
+                        nearby.forEach(f => { avg.x += f.x; avg.y += f.y; });
+                        avg.x /= nearby.length;
+                        avg.y /= nearby.length;
+                        // move slightly towards average
+                        const dx = avg.x - this.x;
+                        const dy = avg.y - this.y;
+                        const len = Math.sqrt(dx*dx + dy*dy);
+                        if (len > 0) {
+                            this.vx += (dx/len) * this.speed * 0.5 * dt;
+                            this.vy += (dy/len) * this.speed * 0.5 * dt;
+                        }
+                    }
+                }
+            }
+            wander(dt) {
+                // random walk
+                if (Math.random() < 0.02) {
+                    const angle = rand(0, Math.PI*2);
+                    this.vx = Math.cos(angle) * this.speed;
+                    this.vy = Math.sin(angle) * this.speed;
+                }
+            }
+            pursue(target, dt) {
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                const len = Math.sqrt(dx*dx + dy*dy);
+                if (len > 0) {
+                    this.vx += (dx/len) * this.speed * dt;
+                    this.vy += (dy/len) * this.speed * dt;
+                }
+            }
+            flee(target, dt) {
+                const dx = this.x - target.x;
+                const dy = this.y - target.y;
+                const len = Math.sqrt(dx*dx + dy*dy);
+                if (len > 0) {
+                    this.vx += (dx/len) * this.speed * dt;
+                    this.vy += (dy/len) * this.speed * dt;
+                }
+            }
+            attack(target) {
+                if (target.isPlayer) {
+                    player.takeDamage(this.damage);
+                } else {
+                    target.takeDamage(this.damage);
+                }
+                // hit effect
+                particleSys.spawn(this.x, this.y, 8);
+            }
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.die();
+                } else {
+                    // hit flash
+                    this.color = '#ff0';
+                    setTimeout(() => { this.color = CONFIG.EVOLUTION_STAGES[this.stageIdx].color; }, 100);
+                }
+            }
+            die() {
+                this.alive = false;
+                if (this.isPlayer) {
+                    gameOver();
+                } else {
+                    // reward player
+                    player.gainXp(CONFIG.BASE_XP_PER_FISH);
+                    player.coins += CONFIG.COIN_PER_FISH;
+                    // spawn loot? (coins already)
+                    particleSys.spawn(this.x, this.y, 12);
+                }
+            }
+            draw(ctx, camX, camY) {
+                // flicker if low health
+                if (this.health < this.maxHealth * 0.3 && Math.random() < 0.5) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    super.draw(ctx, camX, camY);
+                    ctx.restore();
+                } else {
+                    super.draw(ctx, camX, camY);
+                }
+            }
+        }
+
+        // ==== PLAYER ====
+        let player;
+        function createPlayer() {
+            player = new Fish(CONFIG.WORLD_WIDTH/2, CONFIG.WORLD_HEIGHT/2, 0, true);
+            player.name = "Player";
+        }
+
+        // ==== ENEMY FISH SPAWNER ====
+        class EnemySpawner {
+            constructor() {
+                this.timer = 0;
+            }
+            update(dt, fishList) {
+                this.timer -= dt;
+                if (this.timer <= 0 && fishList.length < CONFIG.MAX_FISH) {
+                    this.timer = CONFIG.SPAWN_INTERVAL / 1000; // seconds
+                    const biome = this.getBiomeForY(rand(0, CONFIG.WORLD_HEIGHT));
+                    let x = rand(-500, CONFIG.WORLD_WIDTH + 500);
+                    let y = rand(-500, CONFIG.WORLD_HEIGHT + 500);
+                    // force within biome vertical range
+                    y = clamp(y, biome.yMin, biome.yMax);
+                    const stageIdx = Math.min(Math.floor(player.stageIdx * 1.2), CONFIG.EVOLUTION_STAGES.length - 1);
+                    const fish = new Fish(x, y, stageIdx, false);
+                    // assign species based on stage for variety
+                    fish.type = 'enemy';
+                    fishList.push(fish);
+                }
+            }
+            getBiomeForY(y) {
+                return CONFIG.BIOMES.find(b => y >= b.yMin && y <= b.yMax) || CONFIG.BIOMES[0];
+            }
+        }
+        const enemySpawner = new EnemySpawner();
+
+        // ==== BOSS SYSTEM ====
+        class Boss extends Entity {
+            constructor(stageIdx) {
+                const stage = CONFIG.EVOLUTION_STAGES[stageIdx];
+                super(CONFIG.WORLD_WIDTH/2, -200, stage.size * 2, stage.speed * 0.6, stage.color);
+                this.stageIdx = stageIdx;
+                this.phase = 1;
+                this.phaseHealth = [
+                    {max: this.maxHealth * 0.6, current: this.maxHealth * 0.6},
+                    {max: this.maxHealth * 0.8, current: this.maxHealth * 0.8},
+                    {max: this.maxHealth, current: this.maxHealth}
+                ];
+                this.maxHealth = this.stage.size * 3;
+                this.health = this.maxHealth;
+                this.attackTimer = 0;
+                this.attackPattern = [
+                    {name: 'charge', cooldown: 4, duration: 1.2},
+                    {name: 'spray', cooldown: 6, duration: 2},
+                    {name: 'slam', cooldown: 8, duration: 1}
+                ];
+                this.currentAttack = null;
+                this.target = null; // player
+                this.type = 'boss';
+            }
+            update(dt, fishList) {
+                if (!this.alive) return;
+                // target player
+                this.target = player;
+                // movement: slow drift
+                this.vx *= 0.9;
+                this.vy *= 0.9;
+                // simple wandering near center
+                if (Math.random() < 0.01) {
+                    const angle = rand(0, Math.PI*2);
+                    this.vx = Math.cos(angle) * this.speed * 0.5;
+                    this.vy = Math.sin(angle) * this.speed * 0.5;
+                }
+                super.update(dt);
+                // attack logic
+                if (this.attackTimer <= 0) {
+                    this.chooseAttack();
+                    this.attackTimer = this.currentAttack.cooldown;
+                } else {
+                    this.attackTimer -= dt;
+                }
+                if (this.currentAttack) {
+                    this.executeAttack(dt);
+                }
+                // phase transitions
+                const hpPercent = this.health / this.maxHealth;
+                if (hpPercent < 0.5 && this.phase === 1) {
+                    this.phase = 2;
+                    this.speed *= 1.2;
+                } else if (hpPercent < 0.2 && this.phase === 2) {
+                    this.phase = 3;
+                    this.speed *= 1.5;
+                }
+            }
+            chooseAttack() {
+                const viable = this.attackPattern.filter(a => !this.currentAttack || a.name !== this.currentAttack.name);
+                const choice = viable[Math.floor(Math.random()*viable.length)];
+                this.currentAttack = {...choice, timer: 0};
+            }
+            executeAttack(dt) {
+                if (!this.currentAttack) return;
+                this.currentAttack.timer += dt;
+                const dur = this.currentAttack.duration;
+                if (this.currentAttack.timer > dur) {
+                    this.currentAttack = null;
+                    return;
+                }
+                const progress = this.currentAttack.timer / dur;
+                switch (this.currentAttack.name) {
+                    case 'charge':
+                        // charge towards player
+                        if (this.target) {
+                            const dx = this.target.x - this.x;
+                            const dy = this.target.y - this.y;
+                            const len = Math.sqrt(dx*dx + dy*dy);
+                            if (len > 0) {
+                                this.vx += (dx/len) * this.speed * 3 * dt;
+                                this.vy += (dy/len) * this.speed * 3 * dt;
+                            }
+                        }
+                        break;
+                    case 'spray':
+                        // spray particles in a circle
+                        if (progress > 0 && progress < 0.9 && Math.random() < 0.2) {
+                            const angle = progress * Math.PI * 2 * 3; // spin
+                            const speed = 150;
+                            const vx = Math.cos(angle) * speed;
+                            const vy = Math.sin(angle) * speed;
+                            particleSys.spawn(this.x, this.y, 3);
+                            // damage to player if close
+                            if (dist(this.x, this.y, player.x, player.y) < this.size + 30) {
+                                player.takeDamage(this.stage.dmg * 0.5);
+                            }
+                        }
+                        break;
+                    case 'slam':
+                        // slam down creates shockwave
+                        if (progress > 0.4 && progress < 0.6) {
+                            // radial damage
+                            if (dist(this.x, this.y, player.x, player.y) < this.size * 2) {
+                                player.takeDamage(this.stage.dmg * 1.5);
+                            }
+                            particleSys.spawn(this.x, this.y, 20);
+                        }
+                        break;
+                }
+            }
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.die();
+                } else {
+                    this.color = '#f00';
+                    setTimeout(() => { this.color = CONFIG.EVOLUTION_STAGES[this.stageIdx].color; }, 100);
+                }
+            }
+            die() {
+                this.alive = false;
+                player.gainXp(200);
+                player.coins += 50;
+                particleSys.spawn(this.x, this.y, 40);
+                // spawn a treasure? (just coins)
+                boss = null;
+            }
+            draw(ctx, camX, camY) {
+                super.draw(ctx, camX, camY);
+                // draw health bar above boss
+                const screenX = this.x - camX;
+                const screenY = this.y - camY - this.size - 10;
+                ctx.save();
+                ctx.fillStyle = '#222';
+                ctx.fillRect(screenX - 30, screenY, 60, 6);
+                ctx.fillStyle = '#0f0';
+                ctx.fillRect(screenX - 30, screenY, 60 * (this.health/this.maxHealth), 6);
+                ctx.restore();
+            }
+        }
+        let boss = null;
+
+        // ==== WORLD & BIOME BACKGROUND ====
+        function getBackgroundColor(y) {
+            const biome = CONFIG.BIOMES.find(b => y >= b.yMin && y <= b.yMax);
+            if (!biome) return '#000';
+            const t = (y - biome.yMin) / (biome.yMax - biome.yMin);
+            const r1 = parseInt(biome.colorTop.substr(1,2),16);
+            const g1 = parseInt(biome.colorTop.substr(3,2),16);
+            const b1 = parseInt(biome.colorTop.substr(5,2),16);
+            const r2 = parseInt(biome.colorBottom.substr(1,2),16);
+            const g2 = parseInt(biome.colorBottom.substr(3,2),16);
+            const b2 = parseInt(biome.colorBottom.substr(5,2),16);
+            const r = Math.round(lerp(r1, r2, t));
+            const g = Math.round(lerp(g1, g2, t));
+            const b = Math.round(lerp(b1, b2, t));
+            return `#${((r<<16)|(g<<8)|b).toString(16).padStart(6,'0')}`;
+        }
+        function drawBackground(ctx, camX, camY) {
+            // draw a gradient based on depth (y)
+            const gradient = ctx.createLinearGradient(0, camY, 0, camY + canvas.height);
+            const topY = camY;
+            const bottomY = camY + canvas.height;
+            gradient.addColorScale? Actually we'll do simple two-color.
+            // Instead we fill using a tiled simple color per row? For simplicity, we fill with a solid color based on player depth.
+            const depthColor = getBackgroundColor(player.y);
+            ctx.fillStyle = depthColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // ==== CAMERA SYSTEM ====
+        class Camera {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.lerpFactor = 0.1;
+            }
+            update(target) {
+                const desiredX = target.x - canvas.width/2;
+                const desiredY = target.y - canvas.height/2;
+                // clamp to world bounds
+                const clampedX = clamp(desiredX, 0, CONFIG.WORLD_WIDTH - canvas.width);
+                const clampedY = clamp(desiredY, 0, CONFIG.WORLD_HEIGHT - canvas.height);
+                this.x = lerp(this.x, clampedX, this.lerpFactor);
+                this.y = lerp(this.y, clampedY, this.lerpFactor);
+            }
+        }
+        const camera = new Camera();
+
+        // ==== GAME STATE ====
+        let fishList = [];
+        let particleSys = new ParticleSystem(CONFIG.MAX_PARTICLES);
+        let lastTimestamp = 0;
+        let accumulator = 0;
+        const FIXED_TIME_STEP = 1/60;
+        let gameState = 'menu'; // menu, playing, paused, gameover
+        let score = 0;
+        let coins = 0;
+        let highScore = 0;
+
+        // ==== RENDER LOOP ====
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function update(dt) {
+            if (gameState !== 'playing') return;
+            Input.update ? null : null;
+            player.updateAbilities(dt);
+            player.update(dt);
+            // update AI
+            fishList.forEach(fish => {
+                if (fish.alive) fish.updateAI(dt, fishList);
+            });
+            // update enemy spawner
+            enemySpawner.update(dt, fishList);
+            // update boss
+            if (boss && boss.alive) {
+                boss.update(dt, fishList);
+            } else {
+                // chance to spawn boss after certain stage
+                if (player.stageIdx >= 3 && Math.random() < 0.0005) {
+                    boss = new Boss(Math.min(player.stageIdx + 2, CONFIG.EVOLUTION_STAGES.length-1));
+                }
+            }
+            // update particles
+            particleSys.update(dt);
+            // camera
+            camera.update(player);
+        }
+
+        function render() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // background
+            drawBackground(ctx, camera.x, camera.y);
+            // draw entities (order: background, enemies, player, boss, particles)
+            // enemies
+            fishList.forEach(fish => {
+                if (fish.alive) fish.draw(ctx, camera.x, camera.y);
+            });
+            // player
+            if (player.alive) player.draw(ctx, camera.x, camera.y);
+            // boss
+            if (boss && boss.alive) boss.draw(ctx, camera.x, camera.y);
+            // particles
+            particleSys.draw(ctx);
+            // UI is handled via HTML overlay
+        }
+
+        function gameLoop(timestamp) {
+            const dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+            accumulator += dt;
+            while (accumulator >= FIXED_TIME_STEP) {
+                update(FIXED_TIME_STEP);
+                accumulator -= FIXED_TIME_STEP;
+            }
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ==== UI EVENT HANDLERS ====
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('ui-container').style.display = 'block';
+            startGame();
+        });
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('start-menu').style.display = 'none';
+            document.getElementById('settings-menu').style.display = 'block';
+        });
+        document.getElementById('settingsBtn2').addEventListener('click', () => {
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('settings-menu').style.display = 'block';
+        });
+        document.getElementById('applySettingsBtn').addEventListener('click', () => {
+            const vol = document.getElementById('volumeSlider').value;
+            // apply volume (placeholder)
+            console.log('Volume set to', vol);
+            const qual = document.getElementById('qualitySelect').value;
+            console.log('Quality set to', qual);
+            document.getElementById('settings-menu').style.display = 'none';
+            document.getElementById('start-menu').style.display = 'block';
+        });
+        document.getElementById('backBtn').addEventListener('click', () => {
+            document.getElementById('settings-menu').style.display = 'none';
+            document.getElementById('start-menu').style.display = 'block';
+        });
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+            document.getElementById('pause-menu').style.display = 'none';
+            gameState = 'playing';
+        });
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('pause-menu').style.display = 'none';
+            restartGame();
+        });
+        document.getElementById('quitToMainBtn').addEventListener('click', () => {
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('start-menu').style.display = 'block';
+            document.getElementById('ui-container').style.display = 'none';
+        });
+        document.getElementById('restartGoBtn').addEventListener('click', () => {
+            document.getElementById('gameover-menu').style.display = 'none';
+            restartGame();
+        });
+        document.getElementById('mainMenuGoBtn').addEventListener('click', () => {
+            document.getElementById('gameover-menu').style.display = 'none';
+            document.getElementById('start-menu').style.display = 'block';
+            document.getElementById('ui-container').style.display = 'none';
+        });
+
+        // ==== GAME CONTROL LOGIC ====
+        function handleInput() {
+            if (gameState !== 'playing') return;
+            // Movement
+            if (Input.isDown('KeyW') || Input.isDown('ArrowUp')) player.vy -= player.speed;
+            if (Input.isDown('KeyS') || Input.isDown('ArrowDown')) player.vy += player.speed;
+            if (Input.isDown('KeyA') || Input.isDown('ArrowLeft')) player.vx -= player.speed;
+            if (Input.isDown('KeyD') || Input.isDown('ArrowRight')) player.vx += player.speed;
+            // Abilities
+            if (Input.isDown('ShiftLeft') || Input.isDown('ShiftRight')) {
+                player.useAbility('dash');
+            }
+            if (Input.isDown('Space')) {
+                player.useAbility('bite');
+            }
+            // number keys for other abilities
+            if (Input.isDown('Digit1')) player.useAbility('shockwave');
+            if (Input.isDown('Digit2')) player.useAbility('frenzy');
+            if (Input.isDown('Digit3')) player.useAbility('roar');
+        }
+
+        // Override Input.update to also handle input each frame
+        const _origInit = Input.init;
+        Input.init = function(canvas) {
+            _origInit.call(this, canvas);
+            setInterval(() => {
+                handleInput();
+            }, 1000/60); // 60 times per second
+        };
+
+        // ==== GAME STATE FUNCTIONS ====
+        function startGame() {
+            // reset
+            fishList = [];
+            particleSys = new ParticleSystem(CONFIG.MAX_PARTICLES);
+            boss = null;
+            createPlayer();
+            gameState = 'playing';
+            lastTimestamp = performance.now();
+            accumulator = 0;
+            requestAnimationFrame(gameLoop);
+        }
+        function restartGame() {
+            document.getElementById('hud').style.display = 'block';
+            startGame();
+        }
+        function gameOver() {
+            gameState = 'gameover';
+            document.getElementById('gameover-menu').style.display = 'block';
+            document.getElementById('final-stage').textContent = CONFIG.EVOLUTION_STAGES[player.stageIdx].name;
+            document.getElementById('final-coins').textContent = player.coins;
+            if (player.coins > highScore) {
+                highScore = player.coins;
+                localStorage.setItem('oceanHighScore', highScore);
+            }
+            // Save progress
+            saveGame();
+        }
+        function saveGame() {
+            const saveData = {
+                stage: player.stageIdx,
+                coins: player.coins,
+                abilities: Object.keys(player.abilities).filter(id => player.abilities[id].ready),
+                health: player.health,
+                maxHealth: player.maxHealth,
+                xp: player.xp,
+                xpToNext: player.xpToNext
+            };
+            localStorage.setItem('oceanSave', JSON.stringify(saveData));
+        }
+        function loadGame() {
+            const save = localStorage.getItem('oceanSave');
+            if (save) {
+                const data = JSON.parse(save);
+                // apply
+                if (data.stage !== undefined) {
+                    // will be set after player creation
+                    playerSaveData = data;
+                }
+            }
+        }
+        let playerSaveData = null;
+        // Apply saved data after player created in startGame
+        const _origStartGame = startGame;
+        startGame = function() {
+            _origStartGame.call(this);
+            if (playerSaveData) {
+                player.stageIdx = playerSaveData.stage;
+                player.coins = playerSaveData.coins;
+                player.health = playerSaveData.health;
+                player.maxHealth = playerSaveData.maxHealth;
+                player.xp = playerSaveData.xp;
+                player.xpToNext = playerSaveData.xpToNext;
+                // rebasing size etc done via evolve loop? We'll just set size manually.
+                const stage = CONFIG.EVOLUTION_STAGES[player.stageIdx];
+                player.size = stage.size;
+                player.speed = stage.speed;
+                player.color = stage.color;
+                player.vision = stage.vision;
+                player.baseDamage = stage.dmg;
+                player.damage = player.baseDamage;
+                // update UI later
+                playerSaveData = null;
+            }
+        };
+        // Load high score
+        const hs = localStorage.getItem('oceanHighScore');
+        if (hs) highScore = parseInt(hs);
+
+        // ==== HUD UPDATER ====
+        function updateHUD() {
+            document.getElementById('coins-display').textContent = player.coins;
+            document.getElementById('xp-display').textContent = Math.floor(player.xp);
+            document.getElementById('xp-needed').textContent = Math.floor(player.xpToNext);
+            const xpPercent = player.xp / player.xpToNext;
+            document.getElementById('xp-bar-fill').style.width = (xpPercent * 100) + '%';
+            document.getElementById('health-display').textContent = Math.floor(player.health);
+            document.getElementById('health-max').textContent = Math.floor(player.maxHealth);
+            const healthPercent = player.health / player.maxHealth;
+            document.getElementById('health-bar-fill').style.width = (healthPercent * 100) + '%';
+            document.getElementById('evolution-stage').textContent = CONFIG.EVOLUTION_STAGES[player.stageIdx].name;
+            // ability icons
+            const abilityContainer = document.getElementById('ability-icons');
+            abilityContainer.innerHTML = '';
+            CONFIG.ABILITIES.forEach(abil => {
+                const btn = document.createElement('div');
+                btn.className = 'ability-icon';
+                btn.textContent = abil.icon;
+                if (!player.abilities[abil.id].ready) {
+                    btn.classList.add('cooldown');
+                } else {
+                    btn.classList.add('ready');
+                }
+                btn.title = abil.name + ' (Cooldown: ' + player.abilities[abil.id].cooldown.toFixed(1) + 's)';
+                abilityContainer.appendChild(btn);
+            });
+        }
+        setInterval(updateHUD, 100);
+
+        // ==== DEBUG ====
+        function updateDebug() {
+            const db = document.getElementById('debug');
+            db.innerHTML = `
+                FPS: ${(1/FIXED_TIME_STEP).toFixed(0)}<br>
+                Fish: ${fishList.filter(f=>f.alive).length}/${CONFIG.MAX_FISH}<br>
+                Player Stage: ${CONFIG.EVOLUTION_STAGES[player.stageIdx].name}<br>
+                Player XY: ${player.x.toFixed(0)}, ${player.y.toFixed(0)}<br>
+                Cam XY: ${camera.x.toFixed(0)}, ${camera.y.toFixed(0)}<br>
+                Boss: ${boss ? 'Alive' : 'None'}
+            `;
+        }
+        setInterval(updateDebug, 200);
+
+        // ==== INPUT INIT ====
+        Input.init(canvas);
+
+        // ==== YANDEX GAMES MONETIZATION PLACEHOLDERS ====
+        function showInterstitialAd() {
+            console.log('Placeholder: Interstitial Ad Shown');
+            // Implement Yandex SDK call here
+        }
+        function showRewardedAd() {
+            console.log('Placeholder: Rewarded Ad Shown');
+            // Implement Yandex SDK call here
+            // Reward player
+            player.coins += 50;
+            updateHUD();
+        }
+        // Example: show rewarded ad on double tap? Not needed.
+
+        // ==== START MENU DISPLAY ====
+        document.getElementById('start-menu').style.display = 'block';
+        document.getElementById('ui-container').style.display = 'none';
+    </script>
+</body>
+</html>
